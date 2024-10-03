@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title> Websocket </title>
+    <meta charset="utf-8" />
+
+    <script>
+        let ws = null;
+        let div_info = null;
+        let btn_connect = null;
+        let btn_disconnect = null;
+        let btn_send_text = null;
+        let btn_send_bytes = null;
+        let btn_clear = null;
+        let input_url = null;
+        let input_send = null;
+
+        window.onload = function () {
+            div_info = document.getElementById("div_msg");
+            btn_connect = document.getElementById("btn_connect");
+            btn_disconnect = document.getElementById("btn_disconnect");
+            btn_send_text = document.getElementById("btn_send_text");
+            btn_send_bytes = document.getElementById("btn_send_bytes");
+            btn_clear = document.getElementById("btn_clear");
+            input_url = document.getElementById("input_url");
+            input_send = document.getElementById("input_send");
+
+            btn_connect.disabled = false;
+            btn_disconnect.disabled = true;
+            btn_send_text.disabled = true;
+            btn_send_bytes.disabled = true;
+            btn_clear.disabled = false;
+        }
+
+        function clearMsg() {
+            div_info.innerHTML = "";
+        }
+
+        function appendMsg(msg) {
+            div_info.innerHTML += "<br>" + msg;
+        }
+
+        function initWs() {
+            ws = new WebSocket(input_url.value);
+            ws.binaryType = "arraybuffer";
+            ws.onopen = function () {
+                btn_connect.disabled = true;
+                btn_disconnect.disabled = false;
+                btn_send_text.disabled = false;
+                btn_send_bytes.disabled = false;
+                appendMsg(ws.url + " Connected!");
+            };
+            ws.onmessage = function (evt) {
+                if (evt.data instanceof ArrayBuffer) {
+                    let bufView = new Uint8Array(evt.data);
+                    let str = '';
+                    for (let i = 0; i < bufView.length; i++) {
+                        str += bufView[i] + ' ';
+                    }
+                    appendMsg("Recv:" + str);
+                }
+                else if (typeof evt.data == "string") {
+                    appendMsg("Recv:" + evt.data);
+                }
+            };
+            ws.onclose = function (e) {
+                btn_connect.disabled = false;
+                btn_disconnect.disabled = true;
+                btn_send_text.disabled = true;
+                btn_send_bytes.disabled = true;
+                appendMsg(ws.url + " Disconnected! " + e.code + " " + e.reason);
+            };
+            ws.onerror = function () {
+                appendMsg(ws.url + " Error!");
+            };
+        }
+
+        function closeWs() {
+            ws?.close();
+        }
+
+        function sendText() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                appendMsg("Please connect first!");
+                return;
+            }
+            appendMsg("Send:" + input_send.value);
+            ws?.send(input_send.value);
+        }
+
+        function sendBytes() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                appendMsg("Please connect first!");
+                return;
+            }
+            let str = input_send.value;
+            let buf = new ArrayBuffer(str.length);
+            let bufView = new Uint8Array(buf);
+            let bytes_str = '';
+            for (let i = 0; i < str.length; i++) {
+                bufView[i] = str.charCodeAt(i);
+                bytes_str += str.charCodeAt(i) + ' ';
+            }
+            appendMsg("Send:" + bytes_str);
+            ws?.send(buf);
+        }
+    </script>
+</head>
+
+<body>
+
+    <input type="text" style="width: 200px;" id="input_url" value="wss://local-ws.darklinden.site" />
+    <button type="button" id="btn_connect" onclick="initWs();">Connect</button>
+    <button type="button" id="btn_disconnect" disabled="disabled" onclick="closeWs();">Disconnect</button>
+    <br>
+    <input id="input_send" style="width: 200px;" value="hello" />
+    <button type="button" id="btn_send_text" onclick="sendText();">Send Text</button>
+    <button type="button" id="btn_send_bytes" onclick="sendBytes();">Send Bytes</button>
+
+    <br>
+    <button type="button" id="btn_clear" onclick="clearMsg();">Clear</button>
+    <br>
+    <div id="div_msg" />
+
+</body>
+
+</html>
