@@ -10,7 +10,8 @@
         let ws = null;
         let div_info = null;
         let btn_connect = null;
-        let btn_disconnect = null;
+        let btn_disconnect_default = null;
+        let btn_disconnect_normal = null;
         let btn_send_text = null;
         let btn_send_bytes = null;
         let btn_clear = null;
@@ -20,7 +21,8 @@
         window.onload = function () {
             div_info = document.getElementById("div_msg");
             btn_connect = document.getElementById("btn_connect");
-            btn_disconnect = document.getElementById("btn_disconnect");
+            btn_disconnect_default = document.getElementById("btn_disconnect_default");
+            btn_disconnect_normal = document.getElementById("btn_disconnect_normal");
             btn_send_text = document.getElementById("btn_send_text");
             btn_send_bytes = document.getElementById("btn_send_bytes");
             btn_clear = document.getElementById("btn_clear");
@@ -28,7 +30,8 @@
             input_send = document.getElementById("input_send");
 
             btn_connect.disabled = false;
-            btn_disconnect.disabled = true;
+            btn_disconnect_default.disabled = true;
+            btn_disconnect_normal.disabled = true;
             btn_send_text.disabled = true;
             btn_send_bytes.disabled = true;
             btn_clear.disabled = false;
@@ -47,7 +50,8 @@
             ws.binaryType = "arraybuffer";
             ws.onopen = function () {
                 btn_connect.disabled = true;
-                btn_disconnect.disabled = false;
+                btn_disconnect_default.disabled = false;
+                btn_disconnect_normal.disabled = false;
                 btn_send_text.disabled = false;
                 btn_send_bytes.disabled = false;
                 appendMsg(ws.url + " Connected!");
@@ -67,18 +71,27 @@
             };
             ws.onclose = function (e) {
                 btn_connect.disabled = false;
-                btn_disconnect.disabled = true;
+                btn_disconnect_default.disabled = true;
+                btn_disconnect_normal.disabled = true;
                 btn_send_text.disabled = true;
                 btn_send_bytes.disabled = true;
-                appendMsg(ws.url + " Disconnected! " + e.code + " " + e.reason);
+                appendMsg(ws.url + " Disconnected! code: " + e.code + " reason: " + e.reason);
             };
             ws.onerror = function () {
                 appendMsg(ws.url + " Error!");
             };
         }
 
-        function closeWs() {
+        function defaultCloseWs() {
+            // default code None, 
+            // will receive 1005 [No Status Rcvd] Reserved. Indicates that no status code was provided even though one was expected.
             ws?.close();
+        }
+
+        function normalCloseWs() {
+            // 1000: Normal Closure, 
+            // will receive 1000 [Normal Closure] Successful operation / regular socket shutdown
+            ws?.close(1000);
         }
 
         function sendText() {
@@ -111,11 +124,15 @@
 
 <body>
 
-    <input type="text" style="width: 200px;" id="input_url" value="wss://local-ws.darklinden.site" />
+    <input type="text" style="width: 400px;" id="input_url" value="wss://local-ws.darklinden.site" />
     <button type="button" id="btn_connect" onclick="initWs();">Connect</button>
-    <button type="button" id="btn_disconnect" disabled="disabled" onclick="closeWs();">Disconnect</button>
     <br>
-    <input id="input_send" style="width: 200px;" value="hello" />
+    <button type="button" id="btn_disconnect_default" disabled="disabled" onclick="defaultCloseWs();">Default
+        Close</button>
+    <button type="button" id="btn_disconnect_normal" disabled="disabled" onclick="normalCloseWs();">Normal
+        Close</button>
+    <br><br>
+    <input id="input_send" style="width: 400px;" value="hello" />
     <button type="button" id="btn_send_text" onclick="sendText();">Send Text</button>
     <button type="button" id="btn_send_bytes" onclick="sendBytes();">Send Bytes</button>
 

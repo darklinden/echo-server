@@ -3,6 +3,7 @@ use std::{net::TcpListener, thread::spawn};
 use tungstenite::{
     accept_hdr,
     handshake::server::{Request, Response},
+    http::HeaderValue,
 };
 
 fn main() {
@@ -44,13 +45,14 @@ fn main() {
         }
     };
 
-    let client_auto_id = std::sync::atomic::AtomicUsize::new(1000);
+    let client_auto_id = std::sync::atomic::AtomicUsize::new(1);
     let arc_client_auto_id = std::sync::Arc::new(client_auto_id);
 
     for stream in server.incoming() {
         let auto_id = arc_client_auto_id.clone();
         spawn(move || {
             let mut u_client_id = 0;
+            let mut client_ip: String = String::default();
             let callback = |req: &Request, response: Response| {
                 println!("Received a new ws handshake path: {}", req.uri().path());
                 println!("The request's headers are:");
@@ -58,6 +60,14 @@ fn main() {
                     println!("* {:?} {:?}", header, value);
                 }
                 u_client_id = auto_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                client_ip = req
+                    .headers()
+                    .get("x-real-ip")
+                    .unwrap_or(&HeaderValue::from_static("unknown"))
+                    .to_str()
+                    .unwrap_or_default()
+                    .to_string();
+
                 println!("Client assigned id: {}", u_client_id);
 
                 Ok(response)
@@ -65,8 +75,8 @@ fn main() {
             let mut websocket = accept_hdr(stream.unwrap(), callback).unwrap();
             websocket
                 .send(tungstenite::Message::Text(format!(
-                    "Hello! Client {}",
-                    u_client_id
+                    "Hello! Client [{}] from IP: [{}]",
+                    u_client_id, client_ip
                 )))
                 .unwrap();
 
@@ -88,6 +98,8 @@ fn main() {
                         }
                         tungstenite::Message::Close(close) => {
                             println!("Received {} close message: {:#?}", u_client_id, close);
+                            // wait for the client to close the connection
+                            let _ = websocket.flush();
                             break;
                         }
                         tungstenite::Message::Ping(ping) => {
